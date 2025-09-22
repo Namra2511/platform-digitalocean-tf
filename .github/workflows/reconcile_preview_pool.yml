@@ -32,13 +32,16 @@ jobs:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Init
-        run: |
-          terraform init \
-            -backend-config="organization=jalantechnologies" \
-            -backend-config="workspaces[name=platform-do-cluster-tf]"
+        run: terraform init
 
       - name: Get Current Preview Pool Status
         id: current-status
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
         run: |
           # Check if preview pool currently exists
           terraform show -json | jq -r '.values.root_module.child_modules[] | select(.address == "module.digital_ocean") | .resources[] | select(.address == "module.digital_ocean.digitalocean_kubernetes_node_pool.do_cluster_preview_pool[0]") | .values.name' > /tmp/preview_pool_status || echo "not_found" > /tmp/preview_pool_status
@@ -53,12 +56,24 @@ jobs:
 
       - name: Enable Preview Pool (if needed)
         if: steps.check-prs.outputs.open_prs > 0 && steps.current-status.outputs.preview_pool_exists == 'false'
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
         run: |
           echo "Enabling preview pool - found ${{ steps.check-prs.outputs.open_prs }} open PR(s)"
           terraform apply -auto-approve -var="enable_preview_pool=true"
 
       - name: Disable Preview Pool (if needed)
         if: steps.check-prs.outputs.open_prs == 0 && steps.current-status.outputs.preview_pool_exists == 'true'
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
         run: |
           echo "Disabling preview pool - no open PRs found"
           terraform apply -auto-approve -var="enable_preview_pool=false"
