@@ -55,10 +55,10 @@ jobs:
           terraform apply -var="enable_preview_pool=true"
         env:
           TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
-          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
-          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
-          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
+          TF_VAR_do_cluster_name: ${{ vars.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ vars.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ vars.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ vars.CLUSTER_ISSUER_EMAIL }}
 
       - name: Disable Preview Pool (if needed)
         if: steps.check-prs.outputs.open_prs == 0 && steps.current-status.outputs.preview_pool_exists == 'true'
@@ -67,10 +67,10 @@ jobs:
           terraform apply -var="enable_preview_pool=false"
         env:
           TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
-          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
-          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
-          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
+          TF_VAR_do_cluster_name: ${{ vars.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ vars.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ vars.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ vars.CLUSTER_ISSUER_EMAIL }}
 
       - name: Report Status
         run: |
