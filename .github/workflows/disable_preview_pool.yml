@@ -1,0 +1,39 @@
+name: Disable Preview Pool
+
+on:
+  repository_dispatch:
+    types: [disable-preview-pool]
+
+jobs:
+  disable-preview-pool:
+    name: Disable Preview Pool
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Disable Preview Pool
+        run: |
+          echo "Disabling preview pool to reduce costs..."
+          terraform apply -var="enable_preview_pool=false" -auto-approve
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
+
+      - name: Output Status
+        run: |
+          echo "✅ Preview pool has been disabled"
+          echo "💰 Cost savings: ~$12/month (preview pool destroyed)"
+          echo "🏭 Production pool remains active and unaffected"

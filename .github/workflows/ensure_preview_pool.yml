@@ -1,0 +1,39 @@
+name: Ensure Preview Pool
+
+on:
+  repository_dispatch:
+    types: [ensure-preview-pool]
+
+jobs:
+  ensure-preview-pool:
+    name: Enable Preview Pool
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Enable Preview Pool
+        run: |
+          echo "Enabling preview pool for cost-optimized development environment..."
+          terraform apply -var="enable_preview_pool=true" -auto-approve
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_do_cluster_name: ${{ secrets.DO_CLUSTER_NAME }}
+          TF_VAR_do_cluster_version: ${{ secrets.DO_CLUSTER_VERSION }}
+          TF_VAR_do_alert_email: ${{ secrets.DO_ALERT_EMAIL }}
+          TF_VAR_cluster_issuer_email: ${{ secrets.CLUSTER_ISSUER_EMAIL }}
+
+      - name: Output Status
+        run: |
+          echo "✅ Preview pool has been enabled"
+          echo "💰 Additional cost: ~$12/month for s-1vcpu-2gb nodes"
+          echo "🚀 Preview environment is ready for deployments"
