@@ -8,7 +8,7 @@ jobs:
   reconcile-preview-pool:
     name: Auto-manage Preview Pool
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Infrastructure Repo
         uses: actions/checkout@v4
@@ -52,25 +52,13 @@ jobs:
         if: steps.check-prs.outputs.open_prs > 0 && steps.current-status.outputs.preview_pool_exists == 'false'
         run: |
           echo " Enabling preview pool - found ${{ steps.check-prs.outputs.open_prs }} open PR(s)"
-          terraform apply -var="enable_preview_pool=true"
-        env:
-          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-          TF_VAR_do_cluster_name: ${{ vars.DO_CLUSTER_NAME }}
-          TF_VAR_do_cluster_version: ${{ vars.DO_CLUSTER_VERSION }}
-          TF_VAR_do_alert_email: ${{ vars.DO_ALERT_EMAIL }}
-          TF_VAR_cluster_issuer_email: ${{ vars.CLUSTER_ISSUER_EMAIL }}
+          terraform apply -auto-approve -var="enable_preview_pool=true"
 
       - name: Disable Preview Pool (if needed)
         if: steps.check-prs.outputs.open_prs == 0 && steps.current-status.outputs.preview_pool_exists == 'true'
         run: |
           echo " Disabling preview pool - no open PRs found"
-          terraform apply -var="enable_preview_pool=false"
-        env:
-          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-          TF_VAR_do_cluster_name: ${{ vars.DO_CLUSTER_NAME }}
-          TF_VAR_do_cluster_version: ${{ vars.DO_CLUSTER_VERSION }}
-          TF_VAR_do_alert_email: ${{ vars.DO_ALERT_EMAIL }}
-          TF_VAR_cluster_issuer_email: ${{ vars.CLUSTER_ISSUER_EMAIL }}
+          terraform apply -auto-approve -var="enable_preview_pool=false"
 
       - name: Report Status
         run: |
