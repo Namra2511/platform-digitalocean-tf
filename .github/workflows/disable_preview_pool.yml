@@ -29,7 +29,7 @@ jobs:
       - name: Terraform Apply (disable preview pool)
         run: |
           PREVIEW_SIZE="${{ secrets.PREVIEW_NODE_SIZE }}"
-          if [ -z "$PREVIEW_SIZE" ]; then PREVIEW_SIZE="s-1vcpu-1gb"; fi
+          if [ -z "$PREVIEW_SIZE" ]; then PREVIEW_SIZE="s-2vcpu-2gb"; fi
           terraform apply -auto-approve -input=false \
             -var "enable_preview_pool=false" \
             -var "do_token=${{ secrets.DO_TOKEN }}" \
