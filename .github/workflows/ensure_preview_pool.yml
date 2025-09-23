@@ -1,0 +1,40 @@
+name: Ensure Preview Pool
+
+on:
+  repository_dispatch:
+    types: [ensure-preview-pool]
+
+jobs:
+  ensure-preview-pool:
+    name: Enable Preview Pool
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+        
+    - name: Terraform Init
+      run: terraform init
+      
+    - name: Terraform Plan - Enable Preview Pool
+      run: terraform plan -var="enable_preview_pool=true" -var="do_token=${{ secrets.DO_TOKEN }}" -var="do_cluster_name=${{ secrets.DO_CLUSTER_NAME }}" -var="do_alert_email=${{ secrets.DO_ALERT_EMAIL }}" -var="do_cluster_version=${{ secrets.DO_CLUSTER_VERSION }}" -var="preview_node_size=${{ secrets.PREVIEW_NODE_SIZE }}" -var="cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}"
+      
+    - name: Terraform Apply - Enable Preview Pool
+      run: terraform apply -auto-approve -var="enable_preview_pool=true" -var="do_token=${{ secrets.DO_TOKEN }}" -var="do_cluster_name=${{ secrets.DO_CLUSTER_NAME }}" -var="do_alert_email=${{ secrets.DO_ALERT_EMAIL }}" -var="do_cluster_version=${{ secrets.DO_CLUSTER_VERSION }}" -var="preview_node_size=${{ secrets.PREVIEW_NODE_SIZE }}" -var="cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}"
+      
+    - name: Notify Success
+      if: success()
+      run: |
+        echo "✅ Preview pool has been successfully enabled"
+        echo "Preview pool will be available in a few minutes"
+        
+    - name: Notify Failure
+      if: failure()
+      run: |
+        echo "❌ Failed to enable preview pool"
+        echo "Please check the logs and try again"

@@ -1,0 +1,162 @@
+name: Reconcile Preview Pool
+
+on:
+  schedule:
+    # Run every hour at minute 0
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  reconcile-preview-pool:
+    name: Auto-manage Preview Pool
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Check Open PRs in App Repository
+      id: check-prs
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          try {
+            // Get open PRs from the flask-react-template repository
+            const { data: prs } = await github.rest.pulls.list({
+              owner: 'jalantechnologies',
+              repo: 'flask-react-template',
+              state: 'open'
+            });
+            
+            // Filter out draft PRs
+            const nonDraftPrs = prs.filter(pr => !pr.draft);
+            const prCount = nonDraftPrs.length;
+            
+            console.log(`Found ${prCount} open non-draft PRs in flask-react-template`);
+            
+            // Log PR details for debugging
+            nonDraftPrs.forEach(pr => {
+              console.log(`- PR #${pr.number}: ${pr.title} (${pr.user.login})`);
+            });
+            
+            // Set outputs
+            core.setOutput('pr-count', prCount);
+            core.setOutput('needs-preview-pool', prCount > 0 ? 'true' : 'false');
+            
+            return {
+              prCount: prCount,
+              needsPreviewPool: prCount > 0
+            };
+          } catch (error) {
+            console.error('Error checking PRs:', error);
+            core.setFailed(`Failed to check PRs: ${error.message}`);
+          }
+          
+    - name: Get Current Preview Pool Status
+      id: current-status
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          try {
+            // Check the last successful run of ensure/disable workflows
+            const workflows = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ensure_preview_pool.yml',
+              status: 'success',
+              per_page: 1
+            });
+            
+            const disableWorkflows = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'disable_preview_pool.yml',
+              status: 'success',
+              per_page: 1
+            });
+            
+            let currentlyEnabled = false;
+            
+            if (workflows.data.total_count > 0 && disableWorkflows.data.total_count > 0) {
+              const lastEnable = new Date(workflows.data.workflow_runs[0].created_at);
+              const lastDisable = new Date(disableWorkflows.data.workflow_runs[0].created_at);
+              currentlyEnabled = lastEnable > lastDisable;
+            } else if (workflows.data.total_count > 0) {
+              currentlyEnabled = true;
+            }
+            
+            console.log(`Preview pool currently enabled: ${currentlyEnabled}`);
+            core.setOutput('currently-enabled', currentlyEnabled ? 'true' : 'false');
+            
+            return currentlyEnabled;
+          } catch (error) {
+            console.error('Error checking current status:', error);
+            // Assume disabled if we can't determine status
+            core.setOutput('currently-enabled', 'false');
+            return false;
+          }
+          
+    - name: Setup Terraform
+      if: steps.check-prs.outputs.needs-preview-pool != steps.current-status.outputs.currently-enabled
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+        
+    - name: Terraform Init
+      if: steps.check-prs.outputs.needs-preview-pool != steps.current-status.outputs.currently-enabled
+      run: terraform init
+      
+    - name: Enable Preview Pool
+      if: steps.check-prs.outputs.needs-preview-pool == 'true' && steps.current-status.outputs.currently-enabled == 'false'
+      run: |
+        echo "🚀 Enabling preview pool - found ${{ steps.check-prs.outputs.pr-count }} open PRs"
+        terraform apply -auto-approve \
+          -var="enable_preview_pool=true" \
+          -var="do_token=${{ secrets.DO_TOKEN }}" \
+          -var="do_cluster_name=${{ secrets.DO_CLUSTER_NAME }}" \
+          -var="do_alert_email=${{ secrets.DO_ALERT_EMAIL }}" \
+          -var="do_cluster_version=${{ secrets.DO_CLUSTER_VERSION }}" \
+          -var="preview_node_size=${{ secrets.PREVIEW_NODE_SIZE }}" \
+          -var="cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}"
+          
+    - name: Disable Preview Pool
+      if: steps.check-prs.outputs.needs-preview-pool == 'false' && steps.current-status.outputs.currently-enabled == 'true'
+      run: |
+        echo "💰 Disabling preview pool - no open PRs found"
+        terraform apply -auto-approve \
+          -var="enable_preview_pool=false" \
+          -var="do_token=${{ secrets.DO_TOKEN }}" \
+          -var="do_cluster_name=${{ secrets.DO_CLUSTER_NAME }}" \
+          -var="do_alert_email=${{ secrets.DO_ALERT_EMAIL }}" \
+          -var="do_cluster_version=${{ secrets.DO_CLUSTER_VERSION }}" \
+          -var="preview_node_size=${{ secrets.PREVIEW_NODE_SIZE }}" \
+          -var="cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}"
+          
+    - name: No Action Needed
+      if: steps.check-prs.outputs.needs-preview-pool == steps.current-status.outputs.currently-enabled
+      run: |
+        if [ "${{ steps.check-prs.outputs.needs-preview-pool }}" == "true" ]; then
+          echo "✅ Preview pool already enabled - ${{ steps.check-prs.outputs.pr-count }} open PRs"
+        else
+          echo "✅ Preview pool already disabled - no open PRs"
+        fi
+        
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Reconciliation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Open PRs in flask-react-template**: ${{ steps.check-prs.outputs.pr-count }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Preview pool needed**: ${{ steps.check-prs.outputs.needs-preview-pool }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Currently enabled**: ${{ steps.current-status.outputs.currently-enabled }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.check-prs.outputs.needs-preview-pool }}" != "${{ steps.current-status.outputs.currently-enabled }}" ]; then
+          if [ "${{ steps.check-prs.outputs.needs-preview-pool }}" == "true" ]; then
+            echo "- **Action taken**: ✅ Enabled preview pool" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Action taken**: 💰 Disabled preview pool (saving ~$14/month)" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "- **Action taken**: ℹ️ No change needed" >> $GITHUB_STEP_SUMMARY
+        fi
