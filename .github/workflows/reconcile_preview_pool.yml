@@ -20,13 +20,15 @@ jobs:
         env:
           APP_REPO_PAT: ${{ secrets.APP_REPO_PAT }}
         run: |
-          if [ -z "$APP_REPO_PAT" ]; then
-            echo "APP_REPO_PAT is required. Generate a classic token with repo scope and store as secret." >&2
-            exit 1
+          if [ -n "$APP_REPO_PAT" ]; then
+            RESP=$(curl -s -H "Authorization: token $APP_REPO_PAT" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/jalantechnologies/flask-react-template/pulls?state=open&per_page=100")
+          else
+            echo "APP_REPO_PAT not set; using unauthenticated request (public repos only, 60 req/hr)."
+            RESP=$(curl -s -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/jalantechnologies/flask-react-template/pulls?state=open&per_page=100")
           fi
-          RESP=$(curl -s -H "Authorization: token $APP_REPO_PAT" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/jalantechnologies/flask-react-template/pulls?state=open")
           COUNT=$(echo "$RESP" | jq '[ .[] | select(.draft==false) ] | length')
           echo "open_non_draft_prs=$COUNT" >> $GITHUB_OUTPUT
           if [ "$COUNT" -gt 0 ]; then
