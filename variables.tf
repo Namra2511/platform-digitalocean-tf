@@ -29,5 +29,5 @@ variable "preview_node_size" {
   # list is available at https://slugs.do-api.dev/ on "Droplet Sizes"
   description = "Droplet size slug for the preview node pool"
   type        = string
-  default     = "s-2vcpu-2gb"
+  default     = "s-1vcpu-1gb"
 }

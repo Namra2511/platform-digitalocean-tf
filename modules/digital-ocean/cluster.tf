@@ -28,7 +28,7 @@ variable "enable_preview_pool" {
 variable "preview_node_size" {
   description = "Droplet size slug for the preview node pool"
   type        = string
-  default     = "s-1vcpu-2gb"
+  default     = "s-1vcpu-1gb"
 }
 
 resource "digitalocean_kubernetes_cluster" "do_cluster" {
