@@ -1,0 +1,38 @@
+name: Ensure Preview Pool
+
+on:
+  repository_dispatch:
+    types: [ensure-preview-pool]
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+        run: |
+          terraform init -input=false
+
+      - name: Terraform Apply (enable preview pool)
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var "enable_preview_pool=true" \
+            -var "do_token=${{ secrets.DO_TOKEN }}" \
+            -var "do_cluster_name=${{ secrets.DO_CLUSTER_NAME }}" \
+            -var "do_cluster_version=${{ secrets.DO_CLUSTER_VERSION }}" \
+            -var "do_alert_email=${{ secrets.DO_ALERT_EMAIL }}" \
+            -var "cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}"
+
