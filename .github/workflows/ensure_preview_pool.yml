@@ -3,6 +3,7 @@ name: Ensure Preview Pool
 on:
   repository_dispatch:
     types: [ensure-preview-pool]
+  workflow_dispatch:
 
 jobs:
   ensure-preview-pool:

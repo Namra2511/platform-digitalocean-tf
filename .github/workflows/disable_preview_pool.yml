@@ -3,6 +3,7 @@ name: Disable Preview Pool
 on:
   repository_dispatch:
     types: [disable-preview-pool]
+  workflow_dispatch:
 
 jobs:
   disable-preview-pool:
