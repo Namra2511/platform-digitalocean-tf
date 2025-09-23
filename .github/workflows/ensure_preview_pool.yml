@@ -28,11 +28,14 @@ jobs:
 
       - name: Terraform Apply (enable preview pool)
         run: |
+          PREVIEW_SIZE="${{ secrets.PREVIEW_NODE_SIZE }}"
+          if [ -z "$PREVIEW_SIZE" ]; then PREVIEW_SIZE="s-2vcpu-2gb"; fi
           terraform apply -auto-approve -input=false \
             -var "enable_preview_pool=true" \
             -var "do_token=${{ secrets.DO_TOKEN }}" \
             -var "do_cluster_name=${{ secrets.DO_CLUSTER_NAME }}" \
             -var "do_cluster_version=${{ secrets.DO_CLUSTER_VERSION }}" \
             -var "do_alert_email=${{ secrets.DO_ALERT_EMAIL }}" \
-            -var "cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}"
+            -var "cluster_issuer_email=${{ secrets.CLUSTER_ISSUER_EMAIL }}" \
+            -var "preview_node_size=$PREVIEW_SIZE"
 
