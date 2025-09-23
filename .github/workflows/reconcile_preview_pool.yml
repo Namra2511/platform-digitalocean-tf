@@ -52,7 +52,7 @@ jobs:
       - name: Terraform Apply (reconcile)
         run: |
           PREVIEW_SIZE="${{ secrets.PREVIEW_NODE_SIZE }}"
-          if [ -z "$PREVIEW_SIZE" ]; then PREVIEW_SIZE="s-2vcpu-2gb"; fi
+          if [ -z "$PREVIEW_SIZE" ]; then PREVIEW_SIZE="s-2vcpu-4gb"; fi
           if [ "${{ steps.decide.outputs.enable }}" = "true" ]; then
             terraform apply -auto-approve -input=false \
               -var "enable_preview_pool=true" \
